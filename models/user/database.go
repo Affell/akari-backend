@@ -3,17 +3,13 @@ package user
 import (
 	"akari/models/postgresql"
 	"database/sql"
-	"fmt"
-	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/kataras/golog"
-	"github.com/sethvargo/go-password/password"
 )
 
-func GetSQLUserToken(Email, Password string) (token UserToken, err error) {
+func GetSQLUserToken(username, password string) (token UserToken, err error) {
 
 	var (
 		id    sql.NullInt64
@@ -21,7 +17,7 @@ func GetSQLUserToken(Email, Password string) (token UserToken, err error) {
 	)
 
 	query := "select id, email from account " +
-		"where email=$1 and password=crypt($2, password)"
+		"where enable=true and username=$1 and password=crypt($2, password)"
 
 	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
 	if err != nil {
@@ -29,13 +25,13 @@ func GetSQLUserToken(Email, Password string) (token UserToken, err error) {
 	}
 	defer sqlCo.Close(postgresql.SQLCtx)
 
-	err = sqlCo.QueryRow(postgresql.SQLCtx, query, Password).Scan(
+	err = sqlCo.QueryRow(postgresql.SQLCtx, query, username, password).Scan(
 		&id,
 		&email,
 	)
 
 	if err == pgx.ErrNoRows {
-		golog.Infof("Tentative de connexion infructueuse pour l'utilisateur : %v. Email inconnu ou utilisateur non actif.", Email)
+		golog.Infof("Tentative de connexion infructueuse pour l'utilisateur : %v. Email inconnu ou utilisateur non actif.", username)
 		return
 	} else if err != nil {
 		golog.Error(query, err)
@@ -44,6 +40,7 @@ func GetSQLUserToken(Email, Password string) (token UserToken, err error) {
 
 	token = UserToken{
 		ID:        id.Int64,
+		Username:  username,
 		Email:     email.String,
 		CreatedAt: time.Now(),
 	}
@@ -51,30 +48,50 @@ func GetSQLUserToken(Email, Password string) (token UserToken, err error) {
 	return
 }
 
-func CreateAccount(firstname, lastname, email, password string) int64 {
+func CreateAccount(email, username, password string) int64 {
 
-	query := "insert into account (firstname, lastname, email, password) " +
-		"VALUES ($1,$2,$3,crypt($4, gen_salt('bf'))) RETURNING id"
+	query := "insert into account (email, username, password, enable) " +
+		"VALUES ($1,$2,crypt($3, gen_salt('bf')),true) RETURNING id"
 
 	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
 	if err != nil {
-		golog.Debug(err)
+		golog.Error(err)
 		return -1
 	}
 	defer sqlCo.Close(postgresql.SQLCtx)
 
-	row := sqlCo.QueryRow(postgresql.SQLCtx, query, firstname, lastname, email, password)
+	row := sqlCo.QueryRow(postgresql.SQLCtx, query, email, username, password)
 	var id sql.NullInt64
 	err = row.Scan(&id)
 	if err != nil {
-		golog.Debug(err)
+		golog.Error(err)
 		return -1
 	}
 	return id.Int64
 }
 
+func DeleteAccount(id int64) (msg string) {
+
+	query := "update account set enable=false where id=$1"
+
+	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
+	if err != nil {
+		msg = "Internal server error"
+		return
+	}
+	defer sqlCo.Close(postgresql.SQLCtx)
+
+	cmd, err := sqlCo.Exec(postgresql.SQLCtx, query, id)
+	if err != nil {
+		return "Internal server error"
+	} else if cmd.RowsAffected() == 0 {
+		return "Account not found"
+	}
+	return
+}
+
 func SecurityCheck(id int64, password string) (checked bool) {
-	query := "select id from account where id=$1 and password=crypt($2, password)"
+	query := "select id from account where enable=true and id=$1 and password=crypt($2, password)"
 
 	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
 	if err != nil {
@@ -90,6 +107,23 @@ func SecurityCheck(id int64, password string) (checked bool) {
 	return
 }
 
+func CheckUsernameAvailability(username string) (available bool) {
+	query := "select id from account where username=$1"
+
+	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
+	if err != nil {
+		return
+	}
+	defer sqlCo.Close(postgresql.SQLCtx)
+
+	var id int64
+	err = sqlCo.QueryRow(postgresql.SQLCtx, query, username).Scan(&id)
+	if err == pgx.ErrNoRows {
+		return true
+	}
+	return
+}
+
 func CheckEmailAvailability(email string) (available bool) {
 	query := "select id from account where email=$1"
 
@@ -101,7 +135,6 @@ func CheckEmailAvailability(email string) (available bool) {
 
 	var id int64
 	err = sqlCo.QueryRow(postgresql.SQLCtx, query, email).Scan(&id)
-	golog.Debug(err, id)
 	if err == pgx.ErrNoRows {
 		return true
 	}
@@ -111,7 +144,7 @@ func CheckEmailAvailability(email string) (available bool) {
 func GetUserById(UserId int64) (u User, err error) {
 
 	var (
-		email, firstname, lastname, taxiToken, resetToken, password sql.NullString
+		email, username, password sql.NullString
 	)
 
 	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
@@ -121,16 +154,13 @@ func GetUserById(UserId int64) (u User, err error) {
 	defer sqlCo.Close(postgresql.SQLCtx)
 
 	// Requête GetUserById
-	var query = "SELECT email, firstname, lastname, taxi_token, reset_token, password" +
+	var query = "SELECT email, username, password " +
 		"FROM account " +
-		"WHERE id=$1 "
+		"WHERE enable=true and id=$1 "
 
 	err = sqlCo.QueryRow(postgresql.SQLCtx, query, UserId).Scan(
 		&email,
-		&firstname,
-		&lastname,
-		&taxiToken,
-		&resetToken,
+		&username,
 		&password,
 	)
 
@@ -139,100 +169,10 @@ func GetUserById(UserId int64) (u User, err error) {
 	}
 
 	u = User{
-		ID:         UserId,
-		Firstname:  firstname.String,
-		Lastname:   lastname.String,
-		Email:      email.String,
-		Password:   password.String,
-		TaxiToken:  taxiToken.String,
-		ResetToken: resetToken.String,
-	}
-
-	return
-}
-
-func GetFullNameById(ids ...interface{}) (translation map[int64]string, err error) {
-	translation = make(map[int64]string)
-
-	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
-	if err != nil {
-		return
-	}
-	defer sqlCo.Close(postgresql.SQLCtx)
-
-	var idsFormatted []string
-	for i := range ids {
-		idsFormatted = append(idsFormatted, fmt.Sprintf("id=$%d", i+1))
-	}
-
-	var query = "SELECT id, lastName || ' ' || firstName as fullName FROM account WHERE " + strings.Join(idsFormatted, " OR ")
-	rows, err := sqlCo.Query(postgresql.SQLCtx, query, ids...)
-	if err != nil {
-		golog.Errorf("execution query '%s':\n%s", query, err.Error())
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var (
-			id       sql.NullInt64
-			fullName sql.NullString
-		)
-
-		err = rows.Scan(
-			&id,
-			&fullName,
-		)
-
-		if err == pgx.ErrNoRows {
-			return
-		} else if err != nil {
-			golog.Errorf("psql request '%v' failed with error : %v", query, err)
-			return
-		}
-
-		translation[id.Int64] = fullName.String
-	}
-
-	return
-}
-
-func GetUserByTaxiToken(taxiToken string) (u User, err error) {
-
-	var (
-		id                                     sql.NullInt64
-		email, firstname, lastname, resetToken sql.NullString
-	)
-
-	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
-	if err != nil {
-		return
-	}
-	defer sqlCo.Close(postgresql.SQLCtx)
-
-	var query = "SELECT id, email, firstname, lastname, reset_token " +
-		"FROM account " +
-		"WHERE taxi_token=$1 "
-
-	err = sqlCo.QueryRow(postgresql.SQLCtx, query, taxiToken).Scan(
-		&id,
-		&email,
-		&firstname,
-		&lastname,
-		&resetToken,
-	)
-
-	if err != nil {
-		return
-	}
-
-	u = User{
-		ID:         id.Int64,
-		Firstname:  firstname.String,
-		Lastname:   lastname.String,
-		Email:      email.String,
-		TaxiToken:  taxiToken,
-		ResetToken: resetToken.String,
+		ID:       UserId,
+		Email:    email.String,
+		Username: username.String,
+		Password: password.String,
 	}
 
 	return
@@ -247,7 +187,7 @@ func GetAllUsers() (users []User) {
 
 	defer sqlCo.Close(postgresql.SQLCtx)
 
-	query := "SELECT id, email, firstname, lastname, reset_token, password FROM account"
+	query := "SELECT id, email, username, password, enable FROM account"
 
 	rows, err := sqlCo.Query(postgresql.SQLCtx, query)
 	if err != nil {
@@ -258,17 +198,17 @@ func GetAllUsers() (users []User) {
 
 	for rows.Next() {
 		var (
-			id                                                sql.NullInt64
-			email, firstname, lastname, reset_token, password sql.NullString
+			id                        sql.NullInt64
+			email, username, password sql.NullString
+			enable                    sql.NullBool
 		)
 
 		err = rows.Scan(
 			&id,
 			&email,
-			&firstname,
-			&lastname,
-			&reset_token,
+			&username,
 			&password,
+			&enable,
 		)
 
 		if err == pgx.ErrNoRows {
@@ -279,12 +219,11 @@ func GetAllUsers() (users []User) {
 		}
 
 		users = append(users, User{
-			ID:         id.Int64,
-			Firstname:  firstname.String,
-			Lastname:   lastname.String,
-			Email:      email.String,
-			Password:   password.String,
-			ResetToken: reset_token.String,
+			ID:       id.Int64,
+			Email:    email.String,
+			Username: username.String,
+			Password: password.String,
+			Enable:   enable.Bool,
 		})
 	}
 
@@ -305,21 +244,18 @@ func GetUserByEmail(userEmail string) (u User, msg string) {
 	}
 	defer sqlCo.Close(postgresql.SQLCtx)
 
-	query := "SELECT id, firstname, lastname, password, taxi_token, reset_token " +
+	query := "SELECT id, username, password " +
 		"FROM account " +
 		"where email=$1"
 
 	var (
-		id                                                   sql.NullInt64
-		firstname, lastname, taxiToken, resetToken, password sql.NullString
+		id                 sql.NullInt64
+		username, password sql.NullString
 	)
 	err = sqlCo.QueryRow(postgresql.SQLCtx, query, userEmail).Scan(
 		&id,
-		&firstname,
-		&lastname,
+		&username,
 		&password,
-		&taxiToken,
-		&resetToken,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -332,58 +268,10 @@ func GetUserByEmail(userEmail string) (u User, msg string) {
 	}
 
 	u = User{
-		ID:         id.Int64,
-		Firstname:  firstname.String,
-		Lastname:   lastname.String,
-		Email:      userEmail,
-		Password:   password.String,
-		TaxiToken:  taxiToken.String,
-		ResetToken: resetToken.String,
-	}
-
-	return
-}
-
-func GetUserByName(firstname string, lastname string) (u User) {
-
-	if firstname == "" || lastname == "" {
-		return
-	}
-
-	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
-	if err != nil {
-		return
-	}
-	defer sqlCo.Close(postgresql.SQLCtx)
-
-	query := "SELECT id, email, password, taxi_token, reset_token " +
-		"FROM account " +
-		"where firstname=$1 AND lastname=$2"
-
-	var (
-		id                                     sql.NullInt64
-		email, taxiToken, resetToken, password sql.NullString
-	)
-	err = sqlCo.QueryRow(postgresql.SQLCtx, query, firstname, lastname).Scan(
-		&id,
-		&email,
-		&password,
-		&taxiToken,
-		&resetToken,
-	)
-
-	if err != nil {
-		return
-	}
-
-	u = User{
-		ID:         id.Int64,
-		Firstname:  firstname,
-		Lastname:   lastname,
-		Email:      email.String,
-		Password:   password.String,
-		TaxiToken:  taxiToken.String,
-		ResetToken: resetToken.String,
+		ID:       id.Int64,
+		Email:    userEmail,
+		Username: username.String,
+		Password: password.String,
 	}
 
 	return
@@ -400,21 +288,19 @@ func UpdateUser(user User, password bool) (ok bool) {
 	var query string
 	var args []interface{}
 	if password {
-		query = "UPDATE account set (firstname, lastname, email, password) = ($1,$2,$3,crypt($4, gen_salt('bf'))) " +
-			"WHERE id=$5"
+		query = "UPDATE account set (email, username, password) = ($1,$2,crypt($3, gen_salt('bf'))) " +
+			"WHERE id=$4"
 		args = []interface{}{
-			user.Firstname,
-			user.Lastname,
 			user.Email,
+			user.Username,
 			user.Password,
 			user.ID,
 		}
 	} else {
-		query = "UPDATE account set (firstname, lastname, email) = ($1,$2,$3) " +
-			"WHERE id=$4"
+		query = "UPDATE account set (username, email) = ($1,$2) " +
+			"WHERE id=$3"
 		args = []interface{}{
-			user.Firstname,
-			user.Lastname,
+			user.Username,
 			user.Email,
 			user.ID,
 		}
@@ -422,148 +308,5 @@ func UpdateUser(user User, password bool) (ok bool) {
 
 	cmd, err := sqlCo.Exec(postgresql.SQLCtx, query, args...)
 	ok = cmd.RowsAffected() == 1 && err == nil
-
-	return
-}
-
-func GenResetToken(email string) (token string) {
-
-	if email == "" {
-		return
-	}
-
-	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
-	if err != nil {
-		return
-	}
-	defer sqlCo.Close(postgresql.SQLCtx)
-
-	tempUUID := uuid.New().String()
-
-	query := "UPDATE account " +
-		"SET reset_token=$1 " +
-		"WHERE email=$2"
-
-	updateSQLCmd, err := sqlCo.Exec(postgresql.SQLCtx, query, tempUUID, email)
-	if rowsAffected := updateSQLCmd.RowsAffected(); err != nil {
-		golog.Error(query, err)
-	} else if rowsAffected == 0 {
-		golog.Infof("Tentative de génération de token infructueuse. L'utilisateur %v n'existe pas ou n'est pas actif !", email)
-	} else if rowsAffected == 1 {
-		token = tempUUID
-	}
-
-	return
-}
-
-func GenTaxiToken(userId int64) (token string) {
-
-	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
-	if err != nil {
-		return
-	}
-	defer sqlCo.Close(postgresql.SQLCtx)
-
-	temp, err := password.Generate(32, 10, 10, false, false)
-	if err != nil {
-		return
-	}
-
-	query := "UPDATE account " +
-		"SET taxi_token=$1 " +
-		"WHERE id=$2"
-
-	updateSQLCmd, err := sqlCo.Exec(postgresql.SQLCtx, query, temp, userId)
-	if rowsAffected := updateSQLCmd.RowsAffected(); err != nil {
-		golog.Error(query, err)
-	} else if rowsAffected == 0 {
-		golog.Infof("Tentative de génération de token CariTaxi infructueuse. L'utilisateur %d n'existe pas ou n'est pas actif !", userId)
-	} else if rowsAffected == 1 {
-		token = temp
-	}
-
-	return
-}
-
-func DefinePasswordWithResetToken(ResetToken, Password string) (success bool) {
-
-	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
-	if err != nil {
-		return
-	}
-	defer sqlCo.Close(postgresql.SQLCtx)
-
-	// DefinePasswordWithResetToken: UPDATE PASSWORD
-	query := "UPDATE account " +
-		"SET password=crypt($1, gen_salt('bf')), reset_token=$3 " +
-		"WHERE reset_token=$2"
-
-	cmd, err := sqlCo.Exec(postgresql.SQLCtx, query, Password, ResetToken, sql.NullString{})
-	if rowsAffected := cmd.RowsAffected(); err != nil {
-		golog.Error(query, err)
-	} else if rowsAffected == 0 {
-		golog.Warnf("Tentative de réinitialisation de mot de passe infructueuse. Le token %v n'existe pas !", ResetToken)
-	} else {
-		success = true
-	}
-
-	return
-}
-
-func GetUserPermissions(account int64) (permissions []string) {
-	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
-	if err != nil {
-		return
-	}
-
-	defer sqlCo.Close(postgresql.SQLCtx)
-
-	query := "SELECT permission FROM account_permission WHERE account=$1"
-	rows, err := sqlCo.Query(postgresql.SQLCtx, query, account)
-	if err != nil {
-		golog.Errorf("execution query '%s':\n%s", query, err.Error())
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var permission string
-		err := rows.Scan(&permission)
-		if err == pgx.ErrNoRows {
-			return
-		} else if err != nil {
-			golog.Errorf("psql scan '%v' failed with error : %v", query, err)
-			return
-		}
-		permissions = append(permissions, permission)
-	}
-	return
-}
-
-func UpdateUserPermissions(user int64, permissions []string) (msg string) {
-	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
-	if err != nil {
-		return "Internal server error"
-	}
-	defer sqlCo.Close(postgresql.SQLCtx)
-
-	sqlCo.Exec(postgresql.SQLCtx, "DELETE FROM account_permission WHERE account=$1", user)
-
-	if len(permissions) > 0 {
-		var values []string
-		var args []interface{}
-
-		for i, v := range permissions {
-			values = append(values, fmt.Sprintf("($%d,$%d)", 2*i+1, 2*(i+1)))
-			args = append(args, user, v)
-		}
-
-		query := "INSERT INTO account_permission(account,permission) VALUES " + strings.Join(values, ",")
-
-		_, err := sqlCo.Exec(postgresql.SQLCtx, query, args...)
-		if err != nil {
-			return "Unable to insert user permissions"
-		}
-	}
 	return
 }

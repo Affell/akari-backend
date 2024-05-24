@@ -7,7 +7,6 @@ import (
 func (user User) ToSelfWebDetail() map[string]interface{} {
 	m := structs.Map(user)
 	delete(m, "password")
-	delete(m, "reset_token")
-	delete(m, "taxi_token")
+	delete(m, "enable")
 	return m
 }

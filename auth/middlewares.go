@@ -7,20 +7,11 @@ import (
 )
 
 const (
-	TokenKeyName = "Oui-Connect-Token"
+	TokenKeyName = "INSAkari-Connect-Token"
 )
 
-// RouteVars:
-// is a variable object for the dynamic routing balancing.
-type RouteVars struct {
-	Name   string `param:"package"`
-	First  string `param:"first"`
-	Second string `param:"second"`
-}
-
 type Header struct {
-	TokenID     string `header:"Oui-Connect-Token"`
-	TaxiTokenID string `header:"CariTaxi-Connect-Token"`
+	TokenID string `header:"INSAkari-Connect-Token"`
 }
 
 func AuthRequired() func(iris.Context) {
@@ -32,35 +23,11 @@ func AuthRequired() func(iris.Context) {
 			return
 		}
 
-		// Token, err := user.GetUserToken(header.TokenID)
-		// if err != nil {
-		// 	c.Next()
-		// 	return
-		// }
-
-		var route RouteVars
-		if err := c.ReadParams(&route); err != nil {
-			c.StopWithStatus(iris.StatusNotFound)
-			return
+		Token, err := user.GetUserToken(header.TokenID)
+		if err == nil {
+			c.SetID(Token)
 		}
 
-		// c.SetID(Token)
 		c.Next()
 	}
-}
-
-func CheckTaxiAuth(c iris.Context) (connected bool) {
-
-	var header Header
-	if err := c.ReadHeaders(&header); err != nil || len(header.TaxiTokenID) != 36 {
-		return
-	}
-
-	user, err := user.GetUserByTaxiToken(header.TaxiTokenID)
-	if err != nil {
-		return
-	}
-
-	c.SetID(user)
-	return true
 }

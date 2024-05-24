@@ -56,41 +56,17 @@ func InitPgSQL() (context.Context, *pgx.ConnConfig) {
 	CREATE EXTENSION IF NOT EXISTS pgcrypto;
 	CREATE TABLE IF NOT EXISTS account (
 		id 					SERIAL,
-		firstname 	TEXT NOT NULL,
-		lastname 		TEXT NOT NULL,
 		email 			TEXT NOT NULL UNIQUE,
+		username 		TEXT NOT NULL UNIQUE,
 		password 		TEXT,
-		taxi_token 	VARCHAR(36) UNIQUE,
-		reset_token VARCHAR(36),
+		enable			boolean,
 		PRIMARY KEY(id)
 	);
-	CREATE TABLE IF NOT EXISTS shotgun (
-		id 						SERIAL,
-		unlock_time 	bigint 	NOT NULL,
-		form_link 		TEXT 		NOT NULL,
-		image_link 		TEXT 		NOT NULL,
-		name 					TEXT 		NOT NULL,
-		location 			TEXT 		NOT NULL,
-		PRIMARY KEY(id)
-	);
-	CREATE TABLE IF NOT EXISTS ride
-	(
-		id bigint NOT NULL,
-		operator bigint NOT NULL,
-		taxi bigint,
-		completed BOOLEAN,
-		clientName VARCHAR(32),
-		clientNumber VARCHAR(12),
-		startName VARCHAR(256),
-		latitudeStart NUMERIC(11, 8),
-		longitudeStart NUMERIC(11, 8),
-		endName VARCHAR(256),
-		latitudeEnd NUMERIC(11, 8),
-		longitudeEnd NUMERIC(11, 8),
-		task VARCHAR(128),
-		date bigint,
-		PRIMARY KEY(id),
-		FOREIGN KEY(operator) REFERENCES account(id)
+	CREATE TABLE IF NOT EXISTS score (
+		account				BIGINT NOT NULL,
+		score 			INT NOT NULL,
+		PRIMARY KEY(account),
+		FOREIGN KEY(account) REFERENCES account(id)
 	);
 	`
 
