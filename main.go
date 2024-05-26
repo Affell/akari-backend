@@ -4,6 +4,7 @@ import (
 	"akari/auth"
 	"akari/config"
 	"akari/handlers"
+	"akari/handlers/ws"
 	"embed"
 	"fmt"
 	"strings"
@@ -45,6 +46,13 @@ func main() {
 	router.Get("/", iris.Cache(15*time.Second), handlers.IndexHandler)
 
 	router.HandleDir("/img", handlers.FileHandler(Folder, "public/img"), iris.DirOptions{IndexName: "/img", Compress: true})
+
+	wsRouter := ws.NewRouter()
+	{
+		wsRouter.On("auth", ws.OnAuth, false)
+		wsRouter.On("search", ws.OnSearch, true)
+	}
+	router.Any("/ws", wsRouter.ServeHTTP)
 
 	router.Use(auth.AuthRequired())
 	{

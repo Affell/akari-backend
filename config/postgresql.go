@@ -59,14 +59,9 @@ func InitPgSQL() (context.Context, *pgx.ConnConfig) {
 		email 			TEXT NOT NULL UNIQUE,
 		username 		TEXT NOT NULL UNIQUE,
 		password 		TEXT,
+		score				INTEGER DEFAULT 500,
 		enable			boolean,
 		PRIMARY KEY(id)
-	);
-	CREATE TABLE IF NOT EXISTS score (
-		account				BIGINT NOT NULL,
-		score 			INT NOT NULL,
-		PRIMARY KEY(account),
-		FOREIGN KEY(account) REFERENCES account(id)
 	);
 	`
 
