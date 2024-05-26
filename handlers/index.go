@@ -11,7 +11,7 @@ import (
 
 func IndexHandler(c iris.Context) {
 	c.Header("Content-Type", "application/json; charset=utf-8")
-	c.StopWithJSON(iris.StatusOK, iris.Map{"message": "Welcome to the Oui API"})
+	c.StopWithJSON(iris.StatusOK, iris.Map{"message": "Welcome to the INSAkari API !"})
 }
 
 func FaviconHandler(static embed.FS) func(c iris.Context) {
