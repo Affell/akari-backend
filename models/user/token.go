@@ -27,6 +27,12 @@ func (token UserToken) ToUserData() map[string]interface{} {
 	return structs.Map(token)
 }
 
+func (token UserToken) ToOpponentData() map[string]interface{} {
+	d := structs.Map(token)
+	delete(d, "email")
+	return d
+}
+
 func (userToken *UserToken) Store() (tokenID string) {
 
 	if userToken.TokenID == "" {

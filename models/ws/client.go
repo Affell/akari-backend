@@ -15,21 +15,21 @@ type Message struct {
 type FindHandler func(Event) (HandlerDesc, bool)
 
 type Client struct {
-	socket      *websocket.Conn
+	Socket      *websocket.Conn
 	findHandler FindHandler
 	User        user.UserToken
 }
 
 func NewClient(socket *websocket.Conn, findHandler FindHandler) *Client {
 	return &Client{
-		socket:      socket,
+		Socket:      socket,
 		findHandler: findHandler,
 	}
 }
 
 func (c *Client) Send(name string, data interface{}) {
 	msg := Message{name, data}
-	err := c.socket.WriteJSON(msg)
+	err := c.Socket.WriteJSON(msg)
 	if err != nil {
 		golog.Errorf("socket write error: %v\n", err)
 	}
@@ -38,7 +38,7 @@ func (c *Client) Send(name string, data interface{}) {
 func (c *Client) Read() {
 	var msg Message
 	for {
-		if err := c.socket.ReadJSON(&msg); err != nil {
+		if err := c.Socket.ReadJSON(&msg); err != nil {
 			break
 		}
 		if handlerDesc, found := c.findHandler(Event(msg.Name)); found && (c.User.ID != -1 || !handlerDesc.AuthRequired) {
@@ -48,5 +48,5 @@ func (c *Client) Read() {
 
 	delete(WsUsers, c.User.ID)
 
-	c.socket.Close()
+	c.Socket.Close()
 }
