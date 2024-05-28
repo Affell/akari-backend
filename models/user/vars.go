@@ -12,5 +12,6 @@ type User struct {
 	Email    string `structs:"email"`
 	Username string `structs:"username"`
 	Password string `structs:"password"`
+	Score    int64  `structs:"score"`
 	Enable   bool   `structs:"enable"`
 }

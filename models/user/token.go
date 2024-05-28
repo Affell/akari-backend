@@ -15,6 +15,7 @@ type UserToken struct {
 	ID        int64     `json:"id" structs:"id"`
 	Username  string    `json:"username" structs:"username"`
 	Email     string    `json:"email" structs:"email"`
+	Score     int64     `json:"score" structs:"score"`
 	CreatedAt time.Time `json:"created_at" structs:"-"`
 }
 
@@ -35,13 +36,7 @@ func (userToken *UserToken) Store() (tokenID string) {
 		tokenID = userToken.TokenID
 	}
 
-	tokens[userToken.TokenID] = UserToken{
-		ID:        userToken.ID,
-		TokenID:   userToken.TokenID,
-		Username:  userToken.Username,
-		Email:     userToken.Email,
-		CreatedAt: userToken.CreatedAt,
-	}
+	tokens[userToken.TokenID] = *userToken
 
 	return
 }

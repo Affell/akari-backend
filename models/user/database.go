@@ -12,11 +12,11 @@ import (
 func GetSQLUserToken(username, password string) (token UserToken, err error) {
 
 	var (
-		id    sql.NullInt64
-		email sql.NullString
+		id, score sql.NullInt64
+		email     sql.NullString
 	)
 
-	query := "select id, email from account " +
+	query := "select id, email, score from account " +
 		"where enable=true and username=$1 and password=crypt($2, password)"
 
 	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
@@ -28,6 +28,7 @@ func GetSQLUserToken(username, password string) (token UserToken, err error) {
 	err = sqlCo.QueryRow(postgresql.SQLCtx, query, username, password).Scan(
 		&id,
 		&email,
+		&score,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -42,6 +43,7 @@ func GetSQLUserToken(username, password string) (token UserToken, err error) {
 		ID:        id.Int64,
 		Username:  username,
 		Email:     email.String,
+		Score:     score.Int64,
 		CreatedAt: time.Now(),
 	}
 
@@ -145,6 +147,7 @@ func GetUserById(UserId int64) (u User, err error) {
 
 	var (
 		email, username, password sql.NullString
+		score                     sql.NullInt64
 	)
 
 	sqlCo, err := pgx.ConnectConfig(postgresql.SQLCtx, postgresql.SQLConn)
@@ -154,7 +157,7 @@ func GetUserById(UserId int64) (u User, err error) {
 	defer sqlCo.Close(postgresql.SQLCtx)
 
 	// Requête GetUserById
-	var query = "SELECT email, username, password " +
+	var query = "SELECT email, username, password, score " +
 		"FROM account " +
 		"WHERE enable=true and id=$1 "
 
@@ -162,6 +165,7 @@ func GetUserById(UserId int64) (u User, err error) {
 		&email,
 		&username,
 		&password,
+		&score,
 	)
 
 	if err != nil {
@@ -173,6 +177,7 @@ func GetUserById(UserId int64) (u User, err error) {
 		Email:    email.String,
 		Username: username.String,
 		Password: password.String,
+		Score:    score.Int64,
 	}
 
 	return
@@ -187,7 +192,7 @@ func GetAllUsers() (users []User) {
 
 	defer sqlCo.Close(postgresql.SQLCtx)
 
-	query := "SELECT id, email, username, password, enable FROM account"
+	query := "SELECT id, email, username, password, score, enable FROM account"
 
 	rows, err := sqlCo.Query(postgresql.SQLCtx, query)
 	if err != nil {
@@ -198,7 +203,7 @@ func GetAllUsers() (users []User) {
 
 	for rows.Next() {
 		var (
-			id                        sql.NullInt64
+			id, score                 sql.NullInt64
 			email, username, password sql.NullString
 			enable                    sql.NullBool
 		)
@@ -208,6 +213,7 @@ func GetAllUsers() (users []User) {
 			&email,
 			&username,
 			&password,
+			&score,
 			&enable,
 		)
 
@@ -223,6 +229,7 @@ func GetAllUsers() (users []User) {
 			Email:    email.String,
 			Username: username.String,
 			Password: password.String,
+			Score:    score.Int64,
 			Enable:   enable.Bool,
 		})
 	}
@@ -244,18 +251,19 @@ func GetUserByEmail(userEmail string) (u User, msg string) {
 	}
 	defer sqlCo.Close(postgresql.SQLCtx)
 
-	query := "SELECT id, username, password " +
+	query := "SELECT id, username, password, score " +
 		"FROM account " +
 		"where email=$1"
 
 	var (
-		id                 sql.NullInt64
+		id, score          sql.NullInt64
 		username, password sql.NullString
 	)
 	err = sqlCo.QueryRow(postgresql.SQLCtx, query, userEmail).Scan(
 		&id,
 		&username,
 		&password,
+		&score,
 	)
 
 	if err == pgx.ErrNoRows {
@@ -272,6 +280,7 @@ func GetUserByEmail(userEmail string) (u User, msg string) {
 		Email:    userEmail,
 		Username: username.String,
 		Password: password.String,
+		Score:    score.Int64,
 	}
 
 	return
@@ -288,20 +297,22 @@ func UpdateUser(user User, password bool) (ok bool) {
 	var query string
 	var args []interface{}
 	if password {
-		query = "UPDATE account set (email, username, password) = ($1,$2,crypt($3, gen_salt('bf'))) " +
-			"WHERE id=$4"
+		query = "UPDATE account set (email, username, password, score) = ($1,$2,crypt($3, gen_salt('bf')),$4) " +
+			"WHERE id=$5"
 		args = []interface{}{
 			user.Email,
 			user.Username,
 			user.Password,
+			user.Score,
 			user.ID,
 		}
 	} else {
-		query = "UPDATE account set (username, email) = ($1,$2) " +
-			"WHERE id=$3"
+		query = "UPDATE account set (username, email, score) = ($1,$2,$3) " +
+			"WHERE id=$4"
 		args = []interface{}{
 			user.Username,
 			user.Email,
+			user.Score,
 			user.ID,
 		}
 	}
