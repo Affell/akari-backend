@@ -31,7 +31,10 @@ func (userToken *UserToken) Store() (tokenID string) {
 	if userToken.TokenID == "" {
 		tokenID = uuid.New().String()
 		userToken.TokenID = tokenID
+	} else {
+		tokenID = userToken.TokenID
 	}
+
 	tokens[userToken.TokenID] = UserToken{
 		ID:        userToken.ID,
 		TokenID:   userToken.TokenID,
