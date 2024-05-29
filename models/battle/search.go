@@ -2,6 +2,8 @@ package battle
 
 import (
 	"akari/models/ws"
+
+	"github.com/kataras/golog"
 )
 
 type Queue struct {
@@ -19,9 +21,13 @@ func RegisterPlayer(c *ws.Client) {
 		return
 	}
 
+	golog.Debug("Blou", c.User)
+
 	if other, ok := queue.Pop(); ok {
+		golog.Debug("Blou1", c.User)
 		LaunchGame(c, other)
 	} else {
+		golog.Debug("Blou2", c.User)
 		queue.Append(c)
 		c.Send("search", map[string]interface{}{
 			"success": true,
