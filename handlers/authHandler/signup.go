@@ -5,14 +5,10 @@ import (
 	"akari/models"
 	"akari/models/user"
 
-	"github.com/kataras/golog"
 	"github.com/kataras/iris/v12"
 )
 
 func Signup(c iris.Context, route models.Route) {
-
-	golog.Debug(route)
-
 	if c.Method() != "POST" || route.Tertiary != "" || len(route.Tail) != 0 {
 		c.StopWithStatus(iris.StatusNotFound)
 		return
