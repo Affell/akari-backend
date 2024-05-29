@@ -4,7 +4,8 @@ import (
 	"akari/auth"
 	"akari/config"
 	"akari/handlers"
-	"akari/handlers/ws"
+	"akari/handlers/wsHandler"
+	"akari/models/ws"
 	"embed"
 	"fmt"
 	"strings"
@@ -49,8 +50,11 @@ func main() {
 
 	wsRouter := ws.NewRouter()
 	{
-		wsRouter.On("auth", ws.OnAuth, false)
-		wsRouter.On("search", ws.OnSearch, true)
+		wsRouter.On("auth", wsHandler.OnAuth, false)
+		wsRouter.On("search", wsHandler.OnSearch, true)
+		wsRouter.On("cancelSearch", wsHandler.OnCancelSearch, true)
+		wsRouter.On("gridSubmit", wsHandler.OnGridSubmit, true)
+		wsRouter.On("scoreboard", wsHandler.OnScoreboard, true)
 	}
 	router.Any("/ws", wsRouter.ServeHTTP)
 

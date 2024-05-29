@@ -24,13 +24,28 @@ func OnGridSubmit(c *ws.Client, data interface{}) {
 	json.Unmarshal(jsonString, &jsonData)
 
 	if len(jsonData.Grid) == 0 {
-		c.Send("submitGrid", map[string]interface{}{"valid": false})
+		c.Send("gridSubmit", map[string]interface{}{"valid": false})
 	}
 
 	valid := battle.CheckSolution(c, jsonData.Grid)
-	c.Send("submitGrid", map[string]interface{}{"valid": valid})
+	c.Send("gridSubmit", map[string]interface{}{"valid": valid})
 
 	if valid {
 		battle.EndGame(c, jsonData.Grid)
 	}
+}
+
+func OnScoreboard(c *ws.Client, data interface{}) {
+	jsonString, _ := json.Marshal(data)
+	jsonData := struct {
+		Offset int `json:"offset"`
+	}{}
+	json.Unmarshal(jsonString, &jsonData)
+
+	if jsonData.Offset < 0 {
+		jsonData.Offset = 0
+	}
+
+	scoreboard := battle.GetScoreboard(jsonData.Offset)
+	c.Send("scoreboard", scoreboard)
 }
