@@ -19,7 +19,7 @@ type Game struct {
 	CreatedTime int64
 }
 
-var games map[string]*Game = make(map[string]*Game)
+var games map[int64]*Game = make(map[int64]*Game)
 
 func LaunchGame(player1, player2 *ws.Client) {
 
@@ -27,8 +27,8 @@ func LaunchGame(player1, player2 *ws.Client) {
 
 	game.Player1 = player1
 	game.Player2 = player2
-	games[player1.User.TokenID] = &game
-	games[player2.User.TokenID] = &game
+	games[player1.User.ID] = &game
+	games[player2.User.ID] = &game
 
 	g := grid.GenerateGrid(DEFAULT_SIZE, DEFAULT_DIFFICULTY)
 	game.Grid = g
@@ -48,7 +48,7 @@ func LaunchGame(player1, player2 *ws.Client) {
 
 func CheckSolution(player *ws.Client, grid grid.Grid) (valid bool) {
 
-	game, ok := games[player.User.TokenID]
+	game, ok := games[player.User.ID]
 	if !ok {
 		return
 	}
@@ -57,7 +57,7 @@ func CheckSolution(player *ws.Client, grid grid.Grid) (valid bool) {
 }
 
 func EndGame(winner *ws.Client, solution grid.Grid) {
-	game, ok := games[winner.User.TokenID]
+	game, ok := games[winner.User.ID]
 	if !ok {
 		return
 	}
@@ -95,7 +95,7 @@ func EndGame(winner *ws.Client, solution grid.Grid) {
 		"eloDelta": newElo2 - other.User.Score,
 	})
 
-	delete(games, winner.User.TokenID)
-	delete(games, other.User.TokenID)
+	delete(games, winner.User.ID)
+	delete(games, other.User.ID)
 
 }

@@ -21,13 +21,15 @@ func OnAuth(c *ws.Client, data interface{}) {
 	u := user.UserToken{}
 	var err error
 	if u, err = user.GetUserToken(jsonData.Token); err != nil {
+		c.Send("close", nil)
 		c.Socket.Close()
 		return
 	}
 
 	if old, ok := ws.WsUsers[u.ID]; ok && old.Socket != c.Socket {
-		old.Send("close", nil)
-		old.Socket.Close()
+		old.Send("authAttempt", nil)
+		c.Send("close", nil)
+		c.Socket.Close()
 	}
 
 	c.User = u
