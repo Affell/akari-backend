@@ -1,6 +1,8 @@
 package battle
 
-import "akari/models/ws"
+import (
+	"akari/models/ws"
+)
 
 type Queue struct {
 	Clients []*ws.Client
@@ -9,10 +11,21 @@ type Queue struct {
 var queue Queue
 
 func RegisterPlayer(c *ws.Client) {
+
+	if _, ok := games[c.User.ID]; ok {
+		c.Send("search", map[string]interface{}{
+			"success": false,
+		})
+		return
+	}
+
 	if other, ok := queue.Pop(); ok {
 		LaunchGame(c, other)
 	} else {
 		queue.Append(c)
+		c.Send("search", map[string]interface{}{
+			"success": true,
+		})
 	}
 }
 
