@@ -25,6 +25,7 @@ func OnGridSubmit(c *ws.Client, data interface{}) {
 
 	if len(jsonData.Grid) == 0 {
 		c.Send("gridSubmit", map[string]interface{}{"valid": false})
+		return
 	}
 
 	valid := battle.CheckSolution(c, jsonData.Grid)

@@ -41,7 +41,7 @@ func (c *Client) Read() {
 		if err := c.Socket.ReadJSON(&msg); err != nil {
 			break
 		}
-		if handlerDesc, found := c.findHandler(Event(msg.Name)); found && (c.User.ID != -1 || !handlerDesc.AuthRequired) {
+		if handlerDesc, found := c.findHandler(Event(msg.Name)); found && (c.User.ID != 0 || !handlerDesc.AuthRequired) {
 			handlerDesc.HandlerFunc(c, msg.Data)
 		}
 	}
