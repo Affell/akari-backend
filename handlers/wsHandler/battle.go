@@ -48,5 +48,8 @@ func OnScoreboard(c *ws.Client, data interface{}) {
 	}
 
 	scoreboard := battle.GetScoreboard(jsonData.Offset)
-	c.Send("scoreboard", scoreboard)
+	c.Send("scoreboard", map[string]interface{}{
+		"offset": jsonData.Offset,
+		"users":  scoreboard,
+	})
 }
