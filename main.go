@@ -55,6 +55,7 @@ func main() {
 		wsRouter.On("cancelSearch", wsHandler.OnCancelSearch, true)
 		wsRouter.On("gridSubmit", wsHandler.OnGridSubmit, true)
 		wsRouter.On("scoreboard", wsHandler.OnScoreboard, true)
+		wsRouter.On("forfeit", wsHandler.OnForfeit, true)
 	}
 	router.Any("/ws", wsRouter.ServeHTTP)
 
