@@ -32,7 +32,7 @@ func OnGridSubmit(c *ws.Client, data interface{}) {
 	c.Send("gridSubmit", map[string]interface{}{"valid": valid})
 
 	if valid {
-		battle.EndGame(c, jsonData.Grid)
+		battle.EndGame(c, false)
 	}
 }
 
@@ -52,4 +52,8 @@ func OnScoreboard(c *ws.Client, data interface{}) {
 		"offset": jsonData.Offset,
 		"users":  scoreboard,
 	})
+}
+
+func OnForfeit(c *ws.Client, data interface{}) {
+	battle.Forfeit(c)
 }

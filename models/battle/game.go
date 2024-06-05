@@ -56,7 +56,7 @@ func CheckSolution(player *ws.Client, grid grid.Grid) (valid bool) {
 	return game.Grid.CheckSolution(grid)
 }
 
-func EndGame(winner *ws.Client, solution grid.Grid) {
+func EndGame(winner *ws.Client, forfeit bool) {
 	game, ok := games[winner.User.ID]
 	if !ok {
 		return
@@ -85,12 +85,14 @@ func EndGame(winner *ws.Client, solution grid.Grid) {
 
 	winner.Send("gameResult", map[string]interface{}{
 		"result":   "win",
+		"forfeit":  forfeit,
 		"newElo":   newElo1,
 		"eloDelta": newElo1 - winner.User.Score,
 	})
 
 	other.Send("gameResult", map[string]interface{}{
 		"result":   "defeat",
+		"forfeit":  forfeit,
 		"newElo":   newElo2,
 		"eloDelta": newElo2 - other.User.Score,
 	})
@@ -98,4 +100,18 @@ func EndGame(winner *ws.Client, solution grid.Grid) {
 	delete(games, winner.User.ID)
 	delete(games, other.User.ID)
 
+}
+
+func Forfeit(player *ws.Client) {
+	game, ok := games[player.User.ID]
+	if !ok {
+		return
+	}
+
+	other := game.Player1
+	if other == player {
+		other = game.Player2
+	}
+
+	EndGame(other, true)
 }
