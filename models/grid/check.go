@@ -1,5 +1,7 @@
 package grid
 
+import "github.com/kataras/golog"
+
 func (startGrid Grid) CheckSolution(playerGrid Grid) bool {
 
 	if len(startGrid) != len(playerGrid) {
@@ -19,9 +21,11 @@ func (startGrid Grid) CheckSolution(playerGrid Grid) bool {
 				playerGrid[i][j] = -2
 			}
 			if startGrid[i][j] >= -1 && startGrid[i][j] <= 4 && (playerGrid[i][j] < -1 || playerGrid[i][j] > 4) {
+				golog.Debug("Case ", i, j, " is not a wall")
 				return false
 			}
-			if startGrid[i][j] >= -1 && startGrid[i][j] <= 4 && (playerGrid[i][j] < -1 || playerGrid[i][j] > 4) {
+			if startGrid[i][j] < -1 && startGrid[i][j] > 4 && (playerGrid[i][j] >= -1 || playerGrid[i][j] <= 4) {
+				golog.Debug("Case ", i, j, " is a wall")
 				return false
 			}
 		}
@@ -31,26 +35,31 @@ func (startGrid Grid) CheckSolution(playerGrid Grid) bool {
 	for i := 0; i < n; i++ {
 		for j := 0; j < n; j++ {
 			if playerGrid[i][j] == -3 {
+				ligths[i][j] = -4
 				for k := i + 1; k < n && startGrid[k][j] == -2; k++ {
 					if playerGrid[k][j] == -3 {
+						golog.Debug("Case ", i, j, " is already lighten by a bulb at ", k, j)
 						return false
 					}
 					ligths[k][j] = -4
 				}
 				for k := i - 1; k >= 0 && startGrid[k][j] == -2; k-- {
 					if playerGrid[k][j] == -3 {
+						golog.Debug("Case ", i, j, " is already lighten by a bulb at ", k, j)
 						return false
 					}
 					ligths[k][j] = -4
 				}
 				for k := j + 1; k < n && startGrid[i][k] == -2; k++ {
 					if playerGrid[i][k] == -3 {
+						golog.Debug("Case ", i, j, " is already lighten by a bulb at ", i, k)
 						return false
 					}
 					ligths[i][k] = -4
 				}
-				for k := j - 1; k >= 0 && startGrid[k][j] == -2; k-- {
+				for k := j - 1; k >= 0 && startGrid[i][k] == -2; k-- {
 					if playerGrid[i][k] == -3 {
+						golog.Debug("Case ", i, j, " is already lighten by a bulb at ", i, k)
 						return false
 					}
 					ligths[i][k] = -4
@@ -63,6 +72,7 @@ func (startGrid Grid) CheckSolution(playerGrid Grid) bool {
 		for j := 0; j < n; j++ {
 
 			if startGrid[i][j] == -2 && ligths[i][j] != -4 {
+				golog.Debug("Case ", i, j, " is not lighten")
 				return false
 			}
 
@@ -84,6 +94,7 @@ func (startGrid Grid) CheckSolution(playerGrid Grid) bool {
 				}
 				if nb != playerGrid[i][j] {
 					// If the expected number does not match the found number then return false
+					golog.Debug("Case ", i, j, " has ", nb, " bulbs around instead of ", playerGrid[i][j])
 					return false
 				}
 			}
