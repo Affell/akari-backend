@@ -2,8 +2,7 @@ package grid
 
 import (
 	"math"
-
-	"golang.org/x/exp/rand"
+	"math/rand"
 )
 
 func GenerateGrid(size, difficulty int) (grid Grid) {

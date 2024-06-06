@@ -19,5 +19,6 @@ func init() {
 	golog.SetLevel(config.Cfg.App.DebugLevel)
 
 	postgresql.SQLCtx, postgresql.SQLConn = config.InitPgSQL()
+
 	golog.Debug("init success in " + time.Since(config.Cfg.App.StartedTime).String())
 }
