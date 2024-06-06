@@ -76,7 +76,7 @@ func EndGame(winner *ws.Client, forfeit bool) {
 		return
 	}
 
-	newElo1, newElo2 := ComputeResult(userWinner.Score, userOther.Score, 0)
+	newElo1, newElo2 := ComputeResult(userWinner.Score, userOther.Score, 1)
 	userWinner.Score = newElo1
 	userOther.Score = newElo2
 
