@@ -5,7 +5,6 @@ import (
 	"akari/config"
 	"akari/handlers"
 	"akari/handlers/wsHandler"
-	"akari/models/grid"
 	"akari/models/ws"
 	"embed"
 	"fmt"
@@ -69,13 +68,10 @@ func main() {
 		router.Any("/{service}/{primary}/{secondary}/{tertiary}/{tail}", handlers.HandleRequest)
 	}
 
-	// err := router.Listen(":" + config.Cfg.App.Port)
-	// if err != nil {
-	// 	golog.Fatal(err)
-	// }
-
-	g := grid.GenerateGrid(10, 1)
-	golog.Debug(g)
+	err := router.Listen(":" + config.Cfg.App.Port)
+	if err != nil {
+		golog.Fatal(err)
+	}
 
 	// var g grid.Grid
 	// g = [][]int{
