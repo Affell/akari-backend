@@ -78,9 +78,7 @@ func EndGame(winner *ws.Client, forfeit bool) {
 
 	newElo1, newElo2 := ComputeResult(userWinner.Score, userOther.Score, 1)
 	userWinner.Score = newElo1
-	winner.User.Score = newElo1
 	userOther.Score = newElo2
-	other.User.Score = newElo2
 
 	user.UpdateUser(userWinner, false)
 	user.UpdateUser(userOther, false)
@@ -98,6 +96,9 @@ func EndGame(winner *ws.Client, forfeit bool) {
 		"newElo":   newElo2,
 		"eloDelta": newElo2 - other.User.Score,
 	})
+
+ winner.User.Score = newElo1
+ other.User.Score = newElo2
 
 	delete(games, winner.User.ID)
 	delete(games, other.User.ID)
