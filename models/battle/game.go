@@ -5,6 +5,8 @@ import (
 	"akari/models/user"
 	"akari/models/ws"
 	"time"
+
+	"github.com/kataras/golog"
 )
 
 const (
@@ -67,6 +69,10 @@ func EndGame(winner *ws.Client, forfeit bool) {
 		other = game.Player2
 	}
 
+	if forfeit {
+		golog.Debug("Forfeit by", other.User.Username, " against ", winner.User.Username)
+	}
+
 	userOther, err := user.GetUserById(other.User.ID)
 	if err != nil {
 		return
@@ -79,6 +85,9 @@ func EndGame(winner *ws.Client, forfeit bool) {
 	newElo1, newElo2 := ComputeResult(userWinner.Score, userOther.Score, 1)
 	userWinner.Score = newElo1
 	userOther.Score = newElo2
+
+	golog.Debug("Original winner elo : ", userWinner.Score, " Original other elo : ", userOther.Score)
+	golog.Debug("New winner elo : ", newElo1, " New other elo : ", newElo2)
 
 	user.UpdateUser(userWinner, false)
 	user.UpdateUser(userOther, false)
@@ -97,8 +106,8 @@ func EndGame(winner *ws.Client, forfeit bool) {
 		"eloDelta": newElo2 - other.User.Score,
 	})
 
- winner.User.Score = newElo1
- other.User.Score = newElo2
+	winner.User.Score = newElo1
+	other.User.Score = newElo2
 
 	delete(games, winner.User.ID)
 	delete(games, other.User.ID)
