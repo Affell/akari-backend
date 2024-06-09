@@ -83,11 +83,10 @@ func EndGame(winner *ws.Client, forfeit bool) {
 	}
 
 	newElo1, newElo2 := ComputeResult(userWinner.Score, userOther.Score, 1)
-	userWinner.Score = newElo1
-	userOther.Score = newElo2
-
 	golog.Debug("Original winner elo : ", userWinner.Score, " Original other elo : ", userOther.Score)
 	golog.Debug("New winner elo : ", newElo1, " New other elo : ", newElo2)
+	userWinner.Score = newElo1
+	userOther.Score = newElo2
 
 	user.UpdateUser(userWinner, false)
 	user.UpdateUser(userOther, false)
