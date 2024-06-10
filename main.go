@@ -46,7 +46,7 @@ func main() {
 
 	router.Get("/", iris.Cache(15*time.Second), handlers.IndexHandler)
 
-	router.HandleDir("/img", handlers.FileHandler(Folder, "public/img"), iris.DirOptions{IndexName: "/img", Compress: true})
+	router.HandleDir("/download", handlers.FileHandler(Folder, "public/download"), iris.DirOptions{IndexName: "/download", Compress: true})
 
 	wsRouter := ws.NewRouter()
 	{
