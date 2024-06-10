@@ -42,5 +42,5 @@ func Signout(c iris.Context, route models.Route) {
 
 	user.RevokeUserToken(token.TokenID)
 
-	c.StopWithJSON(iris.StatusOK, iris.Map{"message": "You have successfully signed out of the website"})
+	c.StopWithStatus(iris.StatusOK)
 }

@@ -23,6 +23,6 @@ func Logout(c iris.Context, route models.Route) {
 	}
 
 	user.RevokeUserToken(id)
-	c.StopWithJSON(iris.StatusCreated, iris.Map{"message": "You are no longer connected"})
+	c.StopWithStatus(iris.StatusOK)
 
 }

@@ -19,7 +19,7 @@ func User(c iris.Context, route models.Route) {
 	if t := c.GetID(); t != nil {
 		token = t.(user.UserToken)
 	} else {
-		c.StopWithStatus(iris.StatusForbidden)
+		c.StopWithJSON(iris.StatusUnauthorized, iris.Map{"message": "Incorrect token"})
 		return
 	}
 
@@ -30,7 +30,7 @@ func User(c iris.Context, route models.Route) {
 	case "GET":
 		u, err := user.GetUserById(token.ID)
 		if err != nil {
-			code, data = iris.StatusUnauthorized, iris.Map{"message": "Incorrect token"}
+			code, data = iris.StatusInternalServerError, iris.Map{"message": "Internal Server Error"}
 		} else {
 			code, data = iris.StatusOK, iris.Map{"user": u.ToSelfWebDetail()}
 		}
